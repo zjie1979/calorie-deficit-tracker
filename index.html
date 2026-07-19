@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#173f35" />
+    <meta name="color-scheme" content="light" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="缺口计划" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="description" content="围绕 15000 大卡总缺口，记录每日饮食并追踪减重 5 斤计划。" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>缺口计划｜5斤目标追踪</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">5斤目标追踪</p>
+          <h1>缺口计划</h1>
+        </div>
+        <button class="icon-button" id="quickAddButton" aria-label="添加食物">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        </button>
+      </header>
+
+      <main>
+        <section class="page is-active" data-page="dashboard" aria-labelledby="dashboardTitle">
+          <h2 class="sr-only" id="dashboardTitle">目标进度</h2>
+
+          <article class="hero-card">
+            <div class="hero-orbit hero-orbit-one"></div>
+            <div class="hero-orbit hero-orbit-two"></div>
+            <div class="hero-topline">
+              <span>距离目标还差</span>
+              <span class="formula-badge">3000 大卡 = 1斤</span>
+            </div>
+            <div class="hero-number-row">
+              <strong id="remainingDeficit">15,000</strong>
+              <span>大卡</span>
+            </div>
+            <div class="progress-track" aria-label="目标完成进度">
+              <div class="progress-fill" id="goalProgressBar"></div>
+            </div>
+            <div class="hero-progress-copy">
+              <span id="goalProgressText">已完成 0%</span>
+              <span id="estimatedWeightText">约 0.0 斤</span>
+            </div>
+          </article>
+
+          <div class="metric-grid">
+            <article class="metric-card">
+              <div class="metric-icon target-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M18 6l3-3M17 3h4v4"/></svg>
+              </div>
+              <span>初始总目标</span>
+              <strong>15,000</strong>
+              <small>大卡 · 减重5斤</small>
+            </article>
+            <article class="metric-card accent-card">
+              <div class="metric-icon done-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>
+              </div>
+              <span>累计已完成</span>
+              <strong id="completedDeficit">0</strong>
+              <small>大卡热量缺口</small>
+            </article>
+          </div>
+
+          <article class="today-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="eyebrow" id="todayLabel">今天</p>
+                <h3>今日饮食</h3>
+              </div>
+              <span class="status-pill" id="todayStatus">等待记录</span>
+            </div>
+            <div class="today-equation">
+              <div>
+                <span>标准额度</span>
+                <strong>1,600</strong>
+              </div>
+              <span class="operator">−</span>
+              <div>
+                <span>实际摄入</span>
+                <strong id="todayIntake">0</strong>
+              </div>
+              <span class="operator">=</span>
+              <div class="equation-result">
+                <span>今日缺口</span>
+                <strong id="todayDeficit">—</strong>
+              </div>
+            </div>
+            <p class="empty-day-note" id="todayEmptyNote">录入第一项食物后，才开始计算今天的缺口。</p>
+            <button class="primary-button" id="addTodayFoodButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              记录今天吃了什么
+            </button>
+          </article>
+
+          <article class="insight-card" id="insightCard">
+            <div class="insight-mark">i</div>
+            <p id="insightText">开始记录后，这里会显示你的目标进展。</p>
+          </article>
+        </section>
+
+        <section class="page" data-page="records" aria-labelledby="recordsTitle">
+          <div class="page-title-row">
+            <div>
+              <p class="eyebrow">按自然日记录</p>
+              <h2 id="recordsTitle">饮食记录</h2>
+            </div>
+            <button class="small-action" id="recordAddButton">＋ 添加</button>
+          </div>
+
+          <div class="date-switcher">
+            <button class="date-arrow" id="previousDayButton" aria-label="前一天">‹</button>
+            <label class="date-label" for="recordDateInput">
+              <span id="recordDateFriendly">今天</span>
+              <input id="recordDateInput" type="date" />
+            </label>
+            <button class="date-arrow" id="nextDayButton" aria-label="后一天">›</button>
+          </div>
+
+          <article class="day-summary-card">
+            <div>
+              <span>当日摄入</span>
+              <strong><span id="selectedDayIntake">0</span><small> 大卡</small></strong>
+            </div>
+            <div class="summary-divider"></div>
+            <div>
+              <span>当日缺口</span>
+              <strong id="selectedDayDeficit">未记录</strong>
+            </div>
+          </article>
+
+          <div class="section-heading-row record-heading">
+            <h3>食物明细</h3>
+            <span id="entryCount">0 项</span>
+          </div>
+          <div class="food-entry-list" id="foodEntryList"></div>
+          <div class="empty-state" id="recordsEmptyState">
+            <div class="empty-plate">
+              <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="19"/><circle cx="32" cy="34" r="11"/><path d="M13 10v15M8 10v9c0 4 10 4 10 0v-9M51 10v15M51 10c7 4 7 13 0 15"/></svg>
+            </div>
+            <h3>这一天还没有记录</h3>
+            <p>从常见食物库选择，或按包装千焦录入。</p>
+            <button class="secondary-button" id="emptyAddButton">添加第一项食物</button>
+          </div>
+        </section>
+
+        <section class="page" data-page="settings" aria-labelledby="settingsTitle">
+          <div class="page-title-row">
+            <div>
+              <p class="eyebrow">规则与数据</p>
+              <h2 id="settingsTitle">我的计划</h2>
+            </div>
+          </div>
+
+          <article class="rule-card">
+            <div class="rule-title">
+              <span class="rule-number">01</span>
+              <div><small>固定目标</small><h3>减重 5斤</h3></div>
+            </div>
+            <div class="rule-equation"><strong>5斤</strong><span>×</span><strong>3,000</strong><span>=</span><strong>15,000 大卡</strong></div>
+          </article>
+          <article class="rule-card">
+            <div class="rule-title">
+              <span class="rule-number">02</span>
+              <div><small>每日计算</small><h3>标准摄入 1,600 大卡</h3></div>
+            </div>
+            <div class="rule-equation"><strong>1,600</strong><span>−</span><strong>当日摄入</strong><span>=</span><strong>当日缺口</strong></div>
+          </article>
+
+          <article class="settings-card install-card">
+            <div class="settings-icon phone-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 5h4M11 19h2"/></svg>
+            </div>
+            <div>
+              <h3>添加到 iPhone 主屏幕</h3>
+              <p id="installStatusText">用 Safari 打开本页，点“分享”，再选“添加到主屏幕”。</p>
+            </div>
+          </article>
+
+          <article class="settings-card">
+            <div class="settings-icon data-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M5 19h14"/></svg>
+            </div>
+            <div class="settings-content">
+              <h3>本机数据备份</h3>
+              <p>记录仅存于当前浏览器。换手机或清理 Safari 前，建议先导出。</p>
+              <div class="inline-actions">
+                <button class="text-button" id="exportButton">导出备份</button>
+                <label class="text-button file-button">导入备份<input id="importInput" type="file" accept="application/json" /></label>
+              </div>
+            </div>
+          </article>
+
+          <details class="details-card">
+            <summary>食物热量与计算说明</summary>
+            <div>
+              <p>常见食物库为日常参考值，同一种食物会因品牌、配方和烹饪方式不同而变化；包装食品请优先使用包装营养成分表。</p>
+              <p>千焦换算：千卡 = 千焦 ÷ 4.184。只有添加过食物的日期才会计入累计缺口；当天摄入超过 1,600 大卡时，当日缺口会显示为负数并降低累计值。</p>
+              <p>“3000 大卡 = 1斤”按本计划的自定义规则执行，仅作记录估算，不替代医学或营养建议。</p>
+            </div>
+          </details>
+
+          <button class="danger-button" id="resetButton">清空全部记录</button>
+          <p class="version-copy">缺口计划 · 数据保存在你的设备</p>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="主导航">
+        <button class="nav-item is-active" data-target="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+          <span>进度</span>
+        </button>
+        <button class="nav-item" data-target="records">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v3M18 3v3M4 8h16M5 5h14a1 1 0 011 1v14H4V6a1 1 0 011-1z"/><path d="M8 12h3M8 16h6"/></svg>
+          <span>记录</span>
+        </button>
+        <button class="nav-item" data-target="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.5 3.6-7 8-7s8 2.5 8 7"/></svg>
+          <span>我的</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="modal-backdrop" id="foodModal" aria-hidden="true">
+      <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="foodModalTitle">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div>
+            <p class="eyebrow" id="modalDateLabel">记录到今天</p>
+            <h2 id="foodModalTitle">添加食物</h2>
+          </div>
+          <button class="close-button" id="closeFoodModal" aria-label="关闭">×</button>
+        </div>
+        <div class="segmented-control" role="tablist">
+          <button class="segment is-active" data-entry-mode="common" role="tab">常见食物</button>
+          <button class="segment" data-entry-mode="package" role="tab">包装千焦</button>
+        </div>
+
+        <div class="entry-panel is-active" data-entry-panel="common">
+          <label class="search-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M16 16l5 5"/></svg>
+            <input id="foodSearchInput" type="search" placeholder="搜索米饭、鸡蛋、火锅……" autocomplete="off" />
+          </label>
+          <div class="category-chips" id="categoryChips"></div>
+          <div class="common-food-list" id="commonFoodList"></div>
+          <div class="selected-food-panel" id="selectedFoodPanel" hidden>
+            <div class="selected-food-copy">
+              <div><span>已选择</span><strong id="selectedFoodName">—</strong></div>
+              <span id="selectedFoodReference">—</span>
+            </div>
+            <label class="quantity-field">
+              <span>本次吃了</span>
+              <div><input id="foodQuantityInput" inputmode="decimal" type="number" min="0.1" step="0.1" /><em id="foodQuantityUnit">克</em></div>
+            </label>
+            <div class="calorie-preview"><span>自动计入</span><strong><span id="commonCaloriePreview">0</span> 大卡</strong></div>
+            <button class="primary-button" id="confirmCommonFoodButton">加入这一天</button>
+          </div>
+        </div>
+
+        <div class="entry-panel" data-entry-panel="package">
+          <label class="form-field">
+            <span>食物名称</span>
+            <input id="packageFoodName" type="text" maxlength="40" placeholder="例如：原味酸奶" />
+          </label>
+          <div class="package-mode-card">
+            <label><input type="radio" name="packageMode" value="total" checked /><span><strong>包装标的是本次总千焦</strong><small>直接输入本次吃下的总千焦</small></span></label>
+            <label><input type="radio" name="packageMode" value="per100" /><span><strong>包装标的是每 100克千焦</strong><small>再输入本次实际吃了多少克</small></span></label>
+          </div>
+          <label class="form-field">
+            <span id="kilojouleFieldLabel">本次总千焦</span>
+            <div class="input-with-unit"><input id="kilojouleInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 1255" /><em>千焦</em></div>
+          </label>
+          <label class="form-field" id="packageWeightField" hidden>
+            <span>本次实际吃了</span>
+            <div class="input-with-unit"><input id="packageWeightInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 80" /><em>克</em></div>
+          </label>
+          <div class="conversion-card">
+            <span>1 大卡 ≈ 4.184 千焦</span>
+            <strong><span id="packageCaloriePreview">0</span> 大卡</strong>
+          </div>
+          <button class="primary-button" id="confirmPackageFoodButton">换算并加入</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="confirm-backdrop" id="confirmDialog" aria-hidden="true">
+      <section class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h2 id="confirmTitle">确认操作</h2>
+        <p id="confirmMessage">确认继续吗？</p>
+        <div class="confirm-actions">
+          <button class="secondary-button" id="confirmCancel">取消</button>
+          <button class="danger-solid-button" id="confirmAccept">确认</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./food-data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
