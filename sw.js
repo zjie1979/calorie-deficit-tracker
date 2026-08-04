@@ -1,4 +1,4 @@
-const CACHE_VERSION = "deficit-plan-v2";
+const CACHE_VERSION = "deficit-plan-v3";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -25,6 +25,10 @@ self.addEventListener("activate", (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: "window" }))
+      .then((clients) => Promise.all(clients.map((client) => (
+        typeof client.navigate === "function" ? client.navigate(client.url) : Promise.resolve()
+      ))))
   );
 });
 
