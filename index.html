@@ -23,7 +23,7 @@
           <p class="eyebrow">5斤目标追踪</p>
           <h1>缺口计划</h1>
         </div>
-        <button class="icon-button" id="quickAddButton" aria-label="添加食物">
+        <button class="icon-button" id="quickAddButton" aria-label="记录今日摄入">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       </header>
@@ -48,7 +48,7 @@
             </div>
             <div class="hero-progress-copy">
               <span id="goalProgressText">已完成 0%</span>
-              <span id="estimatedWeightText">约 0.0 斤</span>
+              <span id="estimatedWeightText">预计已减 0.0斤</span>
             </div>
           </article>
 
@@ -70,6 +70,29 @@
               <small>大卡热量缺口</small>
             </article>
           </div>
+
+          <article class="weight-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="eyebrow">体重预估</p>
+                <h3>现在体重与预估体重</h3>
+              </div>
+              <span class="status-pill" id="weightStatus">尚未录入</span>
+            </div>
+            <div class="weight-entry-row">
+              <label class="weight-input-field">
+                <span>现在体重</span>
+                <div><input id="currentWeightInput" inputmode="decimal" type="number" min="1" max="1000" step="0.1" placeholder="例如 125" /><em>斤</em></div>
+              </label>
+              <button class="weight-save-button" id="saveCurrentWeightButton">保存体重</button>
+            </div>
+            <div class="weight-result-row">
+              <div><span>当前录入</span><strong id="currentWeightDisplay">—</strong></div>
+              <span class="weight-arrow">→</span>
+              <div><span>按缺口预估</span><strong id="projectedWeightDisplay">—</strong></div>
+            </div>
+            <p class="weight-note" id="weightEstimateNote">录入现在体重后，将从这一刻起按“每完成3000大卡缺口预计减1斤”推算。</p>
+          </article>
 
           <article class="today-card">
             <div class="section-heading-row">
@@ -95,11 +118,12 @@
                 <strong id="todayDeficit">—</strong>
               </div>
             </div>
-            <p class="empty-day-note" id="todayEmptyNote">录入第一项食物后，才开始计算今天的缺口。</p>
+            <p class="empty-day-note" id="todayEmptyNote">直接填写今天总共摄入多少大卡，即可开始计算。</p>
             <button class="primary-button" id="addTodayFoodButton">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              记录今天吃了什么
+              直接记今天总大卡
             </button>
+            <button class="inline-link-button" id="addTodayFoodDetailButton">也可以逐项添加食物</button>
           </article>
 
           <article class="insight-card" id="insightCard">
@@ -114,7 +138,7 @@
               <p class="eyebrow">按自然日记录</p>
               <h2 id="recordsTitle">饮食记录</h2>
             </div>
-            <button class="small-action" id="recordAddButton">＋ 添加</button>
+            <button class="small-action" id="recordAddButton">＋ 记大卡</button>
           </div>
 
           <div class="date-switcher">
@@ -138,6 +162,18 @@
             </div>
           </article>
 
+          <article class="daily-total-card" id="dailyTotalCard" hidden>
+            <div>
+              <span>当前按全天总数计算</span>
+              <strong><span id="dailyTotalValue">0</span> 大卡</strong>
+              <small>食物明细会保留，但不重复计入当天总摄入。</small>
+            </div>
+            <div class="daily-total-actions">
+              <button id="editDailyTotalButton">修改</button>
+              <button id="clearDailyTotalButton">取消总数</button>
+            </div>
+          </article>
+
           <div class="section-heading-row record-heading">
             <h3>食物明细</h3>
             <span id="entryCount">0 项</span>
@@ -148,8 +184,8 @@
               <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="19"/><circle cx="32" cy="34" r="11"/><path d="M13 10v15M8 10v9c0 4 10 4 10 0v-9M51 10v15M51 10c7 4 7 13 0 15"/></svg>
             </div>
             <h3>这一天还没有记录</h3>
-            <p>从常见食物库选择，或按包装千焦录入。</p>
-            <button class="secondary-button" id="emptyAddButton">添加第一项食物</button>
+            <p>可直接填写全天总大卡，也可以逐项添加食物。</p>
+            <button class="secondary-button" id="emptyAddButton">直接记录当天总大卡</button>
           </div>
         </section>
 
@@ -204,7 +240,8 @@
             <summary>食物热量与计算说明</summary>
             <div>
               <p>常见食物库为日常参考值，同一种食物会因品牌、配方和烹饪方式不同而变化；包装食品请优先使用包装营养成分表。</p>
-              <p>千焦换算：千卡 = 千焦 ÷ 4.184。只有添加过食物的日期才会计入累计缺口；当天摄入超过 1,600 大卡时，当日缺口会显示为负数并降低累计值。</p>
+              <p>千焦换算：千卡 = 千焦 ÷ 4.184。直接录入全天总大卡时，该数值会作为当天最终摄入，不再重复累计食物明细；取消全天总数后，自动恢复按食物明细合计。</p>
+              <p>只有录入过全天大卡或食物的日期才会计入累计缺口；当天摄入超过 1,600 大卡时，当日缺口会显示为负数并降低累计值。</p>
               <p>“3000 大卡 = 1斤”按本计划的自定义规则执行，仅作记录估算，不替代医学或营养建议。</p>
             </div>
           </details>
@@ -236,16 +273,30 @@
         <div class="sheet-header">
           <div>
             <p class="eyebrow" id="modalDateLabel">记录到今天</p>
-            <h2 id="foodModalTitle">添加食物</h2>
+            <h2 id="foodModalTitle">记录摄入</h2>
           </div>
           <button class="close-button" id="closeFoodModal" aria-label="关闭">×</button>
         </div>
-        <div class="segmented-control" role="tablist">
-          <button class="segment is-active" data-entry-mode="common" role="tab">常见食物</button>
+        <div class="segmented-control three-segments" role="tablist">
+          <button class="segment is-active" data-entry-mode="direct" role="tab">直接大卡</button>
+          <button class="segment" data-entry-mode="common" role="tab">常见食物</button>
           <button class="segment" data-entry-mode="package" role="tab">包装千焦</button>
         </div>
 
-        <div class="entry-panel is-active" data-entry-panel="common">
+        <div class="entry-panel is-active" data-entry-panel="direct">
+          <article class="direct-intake-intro">
+            <strong>不用逐项录入食物</strong>
+            <p>估算或查看其他软件后，把这一天吃下的总大卡直接填进来即可。</p>
+          </article>
+          <label class="form-field direct-kcal-field">
+            <span>这一天总共摄入</span>
+            <div class="input-with-unit"><input id="dailyCalorieInput" inputmode="decimal" type="number" min="0" max="20000" step="1" placeholder="例如 1200" /><em>大卡</em></div>
+          </label>
+          <p class="direct-intake-note" id="directIntakeNote">保存后，将直接用该数值计算当日缺口。</p>
+          <button class="primary-button" id="saveDailyTotalButton">保存并计入这一天</button>
+        </div>
+
+        <div class="entry-panel" data-entry-panel="common">
           <label class="search-field">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M16 16l5 5"/></svg>
             <input id="foodSearchInput" type="search" placeholder="搜索米饭、鸡蛋、火锅……" autocomplete="off" />

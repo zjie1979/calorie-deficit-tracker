@@ -37,13 +37,17 @@
     [
       "remainingDeficit", "completedDeficit", "goalProgressBar", "goalProgressText", "estimatedWeightText",
       "todayLabel", "todayStatus", "todayIntake", "todayDeficit", "todayEmptyNote", "insightText",
-      "quickAddButton", "addTodayFoodButton", "recordAddButton", "emptyAddButton", "recordDateInput",
+      "currentWeightInput", "saveCurrentWeightButton", "currentWeightDisplay", "projectedWeightDisplay",
+      "weightStatus", "weightEstimateNote", "quickAddButton", "addTodayFoodButton", "addTodayFoodDetailButton",
+      "recordAddButton", "emptyAddButton", "recordDateInput",
       "recordDateFriendly", "previousDayButton", "nextDayButton", "selectedDayIntake", "selectedDayDeficit",
-      "entryCount", "foodEntryList", "recordsEmptyState", "foodModal", "modalDateLabel", "closeFoodModal",
+      "dailyTotalCard", "dailyTotalValue", "editDailyTotalButton", "clearDailyTotalButton", "entryCount",
+      "foodEntryList", "recordsEmptyState", "foodModal", "modalDateLabel", "closeFoodModal",
       "foodSearchInput", "categoryChips", "commonFoodList", "selectedFoodPanel", "selectedFoodName",
       "selectedFoodReference", "foodQuantityInput", "foodQuantityUnit", "commonCaloriePreview",
       "confirmCommonFoodButton", "packageFoodName", "kilojouleFieldLabel", "kilojouleInput",
       "packageWeightField", "packageWeightInput", "packageCaloriePreview", "confirmPackageFoodButton",
+      "dailyCalorieInput", "directIntakeNote", "saveDailyTotalButton",
       "exportButton", "importInput", "resetButton", "installStatusText", "confirmDialog", "confirmTitle",
       "confirmMessage", "confirmCancel", "confirmAccept", "toast"
     ].forEach((id) => { dom[id] = document.getElementById(id); });
@@ -56,10 +60,17 @@
 
   function bindEvents() {
     dom.navItems.forEach((button) => button.addEventListener("click", () => navigate(button.dataset.target)));
-    dom.quickAddButton.addEventListener("click", () => openFoodModal(todayKey()));
-    dom.addTodayFoodButton.addEventListener("click", () => openFoodModal(todayKey()));
-    dom.recordAddButton.addEventListener("click", () => openFoodModal(selectedDate));
-    dom.emptyAddButton.addEventListener("click", () => openFoodModal(selectedDate));
+    dom.quickAddButton.addEventListener("click", () => openFoodModal(todayKey(), "direct"));
+    dom.addTodayFoodButton.addEventListener("click", () => openFoodModal(todayKey(), "direct"));
+    dom.addTodayFoodDetailButton.addEventListener("click", () => openFoodModal(todayKey(), "common"));
+    dom.recordAddButton.addEventListener("click", () => openFoodModal(selectedDate, "direct"));
+    dom.emptyAddButton.addEventListener("click", () => openFoodModal(selectedDate, "direct"));
+    dom.editDailyTotalButton.addEventListener("click", () => openFoodModal(selectedDate, "direct"));
+    dom.clearDailyTotalButton.addEventListener("click", confirmClearDailyTotal);
+    dom.saveCurrentWeightButton.addEventListener("click", saveCurrentWeight);
+    dom.currentWeightInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") saveCurrentWeight();
+    });
 
     dom.previousDayButton.addEventListener("click", () => changeSelectedDate(-1));
     dom.nextDayButton.addEventListener("click", () => changeSelectedDate(1));
@@ -81,15 +92,19 @@
     dom.kilojouleInput.addEventListener("input", updatePackagePreview);
     dom.packageWeightInput.addEventListener("input", updatePackagePreview);
     dom.confirmPackageFoodButton.addEventListener("click", addPackageFood);
+    dom.saveDailyTotalButton.addEventListener("click", saveDailyTotal);
+    dom.dailyCalorieInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") saveDailyTotal();
+    });
 
     dom.exportButton.addEventListener("click", exportData);
     dom.importInput.addEventListener("change", importData);
     dom.resetButton.addEventListener("click", () => openConfirm({
       title: "清空全部记录？",
-      message: "该操作会删除当前设备里的所有饮食与进度数据，且无法撤回。",
+      message: "该操作会删除当前设备里的体重、饮食与进度数据，且无法撤回。",
       acceptLabel: "全部清空",
       action: () => {
-        appData = { version: 1, records: {} };
+        appData = createEmptyData();
         saveData();
         selectedDate = todayKey();
         renderAll();
@@ -120,16 +135,15 @@
 
   function renderDashboard() {
     const stats = calculateOverallStats();
-    const todayEntries = getEntries(todayKey());
-    const todayIntake = calculateDayIntake(todayEntries);
-    const todayDeficit = calculateDayDeficit(todayEntries);
+    const todayIntake = calculateDayIntake(todayKey());
+    const todayDeficit = calculateDayDeficit(todayKey());
     const completionForDisplay = Math.max(0, stats.completed);
 
     dom.remainingDeficit.textContent = formatNumber(stats.remaining);
     dom.completedDeficit.textContent = formatSignedNumber(stats.completed);
     dom.goalProgressBar.style.width = `${stats.progress}%`;
     dom.goalProgressText.textContent = `已完成 ${formatDecimal(stats.progress, 1)}%`;
-    dom.estimatedWeightText.textContent = `约 ${formatDecimal(completionForDisplay / CONFIG.kcalPerJin, 1)} 斤`;
+    dom.estimatedWeightText.textContent = `预计已减 ${formatDecimal(completionForDisplay / CONFIG.kcalPerJin, 1)}斤`;
     dom.todayLabel.textContent = friendlyDate(todayKey());
     dom.todayIntake.textContent = formatNumber(todayIntake);
 
@@ -154,6 +168,31 @@
     }
 
     dom.insightText.textContent = buildInsight(stats);
+    renderWeightEstimate(stats);
+  }
+
+  function renderWeightEstimate(stats) {
+    const profile = appData.profile || {};
+    const currentWeight = Number(profile.currentWeightJin);
+    if (!Number.isFinite(currentWeight) || currentWeight <= 0) {
+      if (document.activeElement !== dom.currentWeightInput) dom.currentWeightInput.value = "";
+      dom.currentWeightDisplay.textContent = "—";
+      dom.projectedWeightDisplay.textContent = "—";
+      dom.weightStatus.textContent = "尚未录入";
+      dom.weightStatus.classList.remove("is-positive");
+      dom.weightEstimateNote.textContent = "录入现在体重后，将从这一刻起按“每完成3000大卡缺口预计减1斤”推算。";
+      return;
+    }
+
+    const baseline = Number(profile.baselineCompletedDeficit) || 0;
+    const changeInDeficit = stats.completed - baseline;
+    const projectedWeight = currentWeight - changeInDeficit / CONFIG.kcalPerJin;
+    dom.currentWeightInput.value = formatInputNumber(currentWeight);
+    dom.currentWeightDisplay.textContent = `${formatDecimal(currentWeight, 1)}斤`;
+    dom.projectedWeightDisplay.textContent = `${formatDecimal(projectedWeight, 1)}斤`;
+    dom.weightStatus.textContent = "已开始预估";
+    dom.weightStatus.classList.add("is-positive");
+    dom.weightEstimateNote.textContent = `从最近保存体重时起，热量缺口变化 ${formatSignedNumber(changeInDeficit)} 大卡，预估体重变化 ${formatSignedDecimal(-changeInDeficit / CONFIG.kcalPerJin, 1)}斤。`;
   }
 
   function renderRecordsPage() {
@@ -164,15 +203,18 @@
     dom.nextDayButton.style.opacity = selectedDate >= todayKey() ? ".35" : "1";
 
     const entries = getEntries(selectedDate);
-    const intake = calculateDayIntake(entries);
-    const deficit = calculateDayDeficit(entries);
+    const intake = calculateDayIntake(selectedDate);
+    const deficit = calculateDayDeficit(selectedDate);
+    const hasDirectTotal = hasDailyTotal(selectedDate);
     dom.selectedDayIntake.textContent = formatNumber(intake);
     dom.selectedDayDeficit.textContent = deficit === null
       ? "未记录"
       : `${deficit >= 0 ? "+" : ""}${formatNumber(deficit)} 大卡`;
     dom.selectedDayDeficit.style.color = deficit !== null && deficit < 0 ? "#ffc3bc" : "white";
     dom.entryCount.textContent = `${entries.length} 项`;
-    dom.recordsEmptyState.hidden = entries.length > 0;
+    dom.dailyTotalCard.hidden = !hasDirectTotal;
+    dom.dailyTotalValue.textContent = hasDirectTotal ? formatNumber(appData.dailyTotals[selectedDate]) : "0";
+    dom.recordsEmptyState.hidden = entries.length > 0 || hasDirectTotal;
     dom.foodEntryList.hidden = entries.length === 0;
     renderEntryList(entries);
   }
@@ -305,7 +347,9 @@
     });
     closeFoodModal();
     renderAll();
-    showToast(`已加入 ${selectedFood.name} · ${formatNumber(calories)} 大卡`);
+    showToast(hasDailyTotal(modalDate)
+      ? `已保存 ${selectedFood.name}；当天仍按全天总数计算`
+      : `已加入 ${selectedFood.name} · ${formatNumber(calories)} 大卡`);
   }
 
   function updatePackageMode() {
@@ -349,7 +393,35 @@
     });
     closeFoodModal();
     renderAll();
-    showToast(`已换算 ${formatNumber(totalKj)} 千焦 = ${formatNumber(calories)} 大卡`);
+    showToast(hasDailyTotal(modalDate)
+      ? `已保存 ${name}；当天仍按全天总数计算`
+      : `已换算 ${formatNumber(totalKj)} 千焦 = ${formatNumber(calories)} 大卡`);
+  }
+
+  function saveDailyTotal() {
+    const calories = nonNegativeNumber(dom.dailyCalorieInput.value);
+    if (calories === null) return showToast("请输入0或更大的大卡数");
+    if (calories > 20000) return showToast("单日总摄入不能超过20,000大卡");
+    appData.dailyTotals[modalDate] = round2(calories);
+    saveData();
+    closeFoodModal();
+    renderAll();
+    showToast(`已按全天 ${formatNumber(calories)} 大卡计算`);
+  }
+
+  function saveCurrentWeight() {
+    const weight = positiveNumber(dom.currentWeightInput.value);
+    if (!weight) return showToast("请输入现在体重");
+    if (weight > 1000) return showToast("请输入1000斤以内的体重");
+    const stats = calculateOverallStats();
+    appData.profile = {
+      currentWeightJin: round2(weight),
+      baselineCompletedDeficit: stats.completed,
+      recordedAt: new Date().toISOString()
+    };
+    saveData();
+    renderAll();
+    showToast(`已保存现在体重 ${formatDecimal(weight, 1)}斤`);
   }
 
   function addEntry(dateKey, entry) {
@@ -374,7 +446,24 @@
     });
   }
 
-  function openFoodModal(dateKey) {
+  function confirmClearDailyTotal() {
+    if (!hasDailyTotal(selectedDate)) return;
+    openConfirm({
+      title: "取消全天总大卡？",
+      message: getEntries(selectedDate).length
+        ? "取消后，这一天会恢复按现有食物明细合计。"
+        : "取消后，这一天将变为未记录。",
+      acceptLabel: "确认取消",
+      action: () => {
+        delete appData.dailyTotals[selectedDate];
+        saveData();
+        renderAll();
+        showToast("已取消全天总大卡");
+      }
+    });
+  }
+
+  function openFoodModal(dateKey, mode = "direct") {
     modalDate = dateKey && dateKey <= todayKey() ? dateKey : todayKey();
     selectedFood = null;
     selectedCategory = "全部";
@@ -385,14 +474,21 @@
     dom.kilojouleInput.value = "";
     dom.packageWeightInput.value = "";
     dom.packageModeInputs[0].checked = true;
-    setEntryMode("common");
+    dom.dailyCalorieInput.value = hasDailyTotal(modalDate) ? formatInputNumber(appData.dailyTotals[modalDate]) : "";
+    dom.directIntakeNote.textContent = getEntries(modalDate).length
+      ? "保存后，将以这个全天总数为准，现有食物明细会保留但不重复计算。"
+      : "保存后，将直接用该数值计算当日缺口。";
+    setEntryMode(mode);
     updatePackageMode();
     renderCategoryChips();
     renderFoodChoices();
     dom.foodModal.classList.add("is-open");
     dom.foodModal.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
-    window.setTimeout(() => dom.foodSearchInput.focus(), 250);
+    window.setTimeout(() => {
+      if (mode === "direct") dom.dailyCalorieInput.focus();
+      else if (mode === "common") dom.foodSearchInput.focus();
+    }, 250);
   }
 
   function closeFoodModal() {
@@ -404,6 +500,7 @@
   function setEntryMode(mode) {
     dom.segments.forEach((segment) => segment.classList.toggle("is-active", segment.dataset.entryMode === mode));
     dom.entryPanels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.entryPanel === mode));
+    if (mode === "direct") dom.dailyCalorieInput.focus({ preventScroll: true });
   }
 
   function navigate(target) {
@@ -420,23 +517,25 @@
   }
 
   function calculateOverallStats() {
-    const activeDays = Object.values(appData.records).filter((entries) => Array.isArray(entries) && entries.length > 0);
-    const completed = round2(activeDays.reduce((sum, entries) => sum + CONFIG.dailyAllowance - calculateDayIntake(entries), 0));
+    const dateKeys = new Set([...Object.keys(appData.records), ...Object.keys(appData.dailyTotals)]);
+    const activeDays = [...dateKeys].filter((dateKey) => hasDayRecord(dateKey));
+    const completed = round2(activeDays.reduce((sum, dateKey) => sum + CONFIG.dailyAllowance - calculateDayIntake(dateKey), 0));
     const remaining = round2(Math.max(0, CONFIG.targetDeficit - completed));
     const progress = Math.min(100, Math.max(0, completed / CONFIG.targetDeficit * 100));
     return { completed, remaining, progress, activeDays: activeDays.length };
   }
 
-  function calculateDayIntake(entries) {
-    return round2(entries.reduce((sum, entry) => sum + (Number(entry.kcal) || 0), 0));
+  function calculateDayIntake(dateKey) {
+    if (hasDailyTotal(dateKey)) return round2(Number(appData.dailyTotals[dateKey]));
+    return round2(getEntries(dateKey).reduce((sum, entry) => sum + (Number(entry.kcal) || 0), 0));
   }
 
-  function calculateDayDeficit(entries) {
-    return entries.length ? round2(CONFIG.dailyAllowance - calculateDayIntake(entries)) : null;
+  function calculateDayDeficit(dateKey) {
+    return hasDayRecord(dateKey) ? round2(CONFIG.dailyAllowance - calculateDayIntake(dateKey)) : null;
   }
 
   function buildInsight(stats) {
-    if (!stats.activeDays) return "添加第一项饮食记录后，累计缺口和剩余目标会自动更新。";
+    if (!stats.activeDays) return "直接记录当天总大卡后，累计缺口和剩余目标会自动更新。";
     if (stats.completed >= CONFIG.targetDeficit) return "你已按本计划公式完成 15,000 大卡累计缺口。继续记录，可留存完整饮食轨迹。";
     const average = stats.completed / stats.activeDays;
     if (average <= 0) return `已记录 ${stats.activeDays} 天，目前累计缺口尚未增加。可先观察饮食记录，再调整接下来的安排。`;
@@ -536,17 +635,42 @@
       });
       if (cleanEntries.length) records[dateKey] = cleanEntries;
     });
-    return { version: 1, records };
+    const dailyTotals = {};
+    if (input.dailyTotals && typeof input.dailyTotals === "object") {
+      Object.entries(input.dailyTotals).forEach(([dateKey, calories]) => {
+        const number = Number(calories);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !Number.isFinite(number) || number < 0 || number > 20000) {
+          throw new Error("Invalid daily total");
+        }
+        dailyTotals[dateKey] = round2(number);
+      });
+    }
+
+    const profile = {};
+    if (input.profile && typeof input.profile === "object") {
+      const weight = Number(input.profile.currentWeightJin);
+      const baseline = Number(input.profile.baselineCompletedDeficit);
+      if (Number.isFinite(weight) && weight > 0 && weight <= 1000) {
+        profile.currentWeightJin = round2(weight);
+        profile.baselineCompletedDeficit = Number.isFinite(baseline) ? round2(baseline) : 0;
+        profile.recordedAt = typeof input.profile.recordedAt === "string" ? input.profile.recordedAt : "";
+      }
+    }
+    return { version: 2, records, dailyTotals, profile };
   }
 
   function loadData() {
     try {
       const raw = localStorage.getItem(CONFIG.storageKey);
-      if (!raw) return { version: 1, records: {} };
+      if (!raw) return createEmptyData();
       return normalizeImportedData(JSON.parse(raw));
     } catch (error) {
-      return { version: 1, records: {} };
+      return createEmptyData();
     }
+  }
+
+  function createEmptyData() {
+    return { version: 2, records: {}, dailyTotals: {}, profile: {} };
   }
 
   function saveData() {
@@ -555,6 +679,16 @@
 
   function getEntries(dateKey) {
     return Array.isArray(appData.records[dateKey]) ? appData.records[dateKey] : [];
+  }
+
+  function hasDailyTotal(dateKey) {
+    return Object.prototype.hasOwnProperty.call(appData.dailyTotals, dateKey)
+      && Number.isFinite(Number(appData.dailyTotals[dateKey]))
+      && Number(appData.dailyTotals[dateKey]) >= 0;
+  }
+
+  function hasDayRecord(dateKey) {
+    return hasDailyTotal(dateKey) || getEntries(dateKey).length > 0;
   }
 
   function getPackageMode() {
@@ -615,6 +749,12 @@
     return Number.isFinite(number) && number > 0 ? number : 0;
   }
 
+  function nonNegativeNumber(value) {
+    if (String(value).trim() === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : null;
+  }
+
   function formatNumber(value) {
     const rounded = Math.round(Number(value) || 0);
     return new Intl.NumberFormat("zh-CN").format(rounded);
@@ -628,6 +768,17 @@
   function formatDecimal(value, digits) {
     const number = Number(value) || 0;
     return number.toLocaleString("zh-CN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  }
+
+  function formatSignedDecimal(value, digits) {
+    const number = Number(value) || 0;
+    return `${number > 0 ? "+" : ""}${formatDecimal(number, digits)}`;
+  }
+
+  function formatInputNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "";
+    return String(round2(number));
   }
 
   function round2(value) {
