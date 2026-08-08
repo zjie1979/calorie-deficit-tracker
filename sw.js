@@ -1,4 +1,4 @@
-const CACHE_VERSION = "deficit-plan-v6";
+const CACHE_VERSION = "deficit-plan-v9";
 const APP_ASSETS = [
   "./",
   "./index.html",

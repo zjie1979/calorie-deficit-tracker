@@ -23,9 +23,6 @@
           <p class="eyebrow">5斤目标追踪</p>
           <h1>缺口计划</h1>
         </div>
-        <button class="icon-button" id="quickAddButton" aria-label="记录今日摄入">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        </button>
       </header>
 
       <main>
@@ -36,8 +33,8 @@
             <div class="hero-orbit hero-orbit-one"></div>
             <div class="hero-orbit hero-orbit-two"></div>
             <div class="hero-topline">
-              <span>距离目标还差</span>
-              <span class="formula-badge">3000 大卡 = 1斤</span>
+              <span>距离 5斤目标还差</span>
+              <span class="formula-badge">总目标 15,000</span>
             </div>
             <div class="hero-number-row">
               <strong id="remainingDeficit">15,000</strong>
@@ -48,50 +45,26 @@
             </div>
             <div class="hero-progress-copy">
               <span id="goalProgressText">已完成 0%</span>
-              <span id="estimatedWeightText">缺口对应 0.0斤</span>
+              <span id="estimatedWeightText">等待首次记录</span>
             </div>
-          </article>
-
-          <div class="metric-grid">
-            <article class="metric-card">
-              <div class="metric-icon target-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M18 6l3-3M17 3h4v4"/></svg>
-              </div>
-              <span>初始总目标</span>
-              <strong>15,000</strong>
-              <small>大卡 · 减重5斤</small>
-            </article>
-            <article class="metric-card accent-card">
-              <div class="metric-icon done-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6"/></svg>
-              </div>
-              <span>累计已完成</span>
-              <strong id="completedDeficit">0</strong>
-              <small>大卡热量缺口</small>
-            </article>
-          </div>
-
-          <article class="weight-card">
-            <div class="section-heading-row">
+            <div class="momentum-grid">
               <div>
-                <p class="eyebrow">体重预估</p>
-                <h3>现在体重与预估体重</h3>
+                <span>累计缺口</span>
+                <strong id="completedDeficit">0</strong>
+                <small>大卡</small>
               </div>
-              <span class="status-pill" id="weightStatus">尚未设定基准</span>
+              <div>
+                <span>体重变化</span>
+                <strong id="completedJin">0.0</strong>
+                <small>斤</small>
+              </div>
+              <div>
+                <span>当前节奏</span>
+                <strong id="paceDays">—</strong>
+                <small>预计天数</small>
+              </div>
             </div>
-            <div class="weight-entry-row">
-              <label class="weight-input-field">
-                <span>今日实际体重</span>
-                <div><input id="currentWeightInput" inputmode="decimal" type="number" min="1" max="1000" step="0.1" placeholder="例如 125" /><em>斤</em></div>
-              </label>
-              <button class="weight-save-button" id="saveCurrentWeightButton">保存今日体重</button>
-            </div>
-            <div class="weight-result-row">
-              <div><span>今日实测</span><strong id="currentWeightDisplay">—</strong></div>
-              <span class="weight-arrow">→</span>
-              <div><span>按缺口预估</span><strong id="projectedWeightDisplay">—</strong></div>
-            </div>
-            <p class="weight-note" id="weightEstimateNote">第一次录入的体重将作为固定基准，预估体重始终按累计热量缺口推算。</p>
+            <p class="hero-insight" id="insightText">保存当天摄入后，这里会显示完成节奏。</p>
           </article>
 
           <article class="today-card">
@@ -118,18 +91,45 @@
                 <strong id="todayDeficit">—</strong>
               </div>
             </div>
-            <p class="empty-day-note" id="todayEmptyNote">直接填写今天总共摄入多少大卡，即可开始计算。</p>
-            <button class="primary-button" id="addTodayFoodButton">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              直接记今天总大卡
-            </button>
-            <button class="inline-link-button" id="addTodayFoodDetailButton">也可以逐项添加食物</button>
+            <p class="daily-contribution" id="dailyContributionText">记录后显示今天为总目标推进了多少。</p>
+            <div class="today-entry-box">
+              <span>全天总摄入</span>
+              <div class="today-entry-controls">
+                <label class="today-kcal-input">
+                  <input id="todayCalorieInput" inputmode="decimal" type="number" min="0" max="20000" step="1" placeholder="例如 1200" />
+                  <em>大卡</em>
+                </label>
+                <button class="today-save-button" id="saveTodayCaloriesButton">保存</button>
+              </div>
+              <p class="empty-day-note" id="todayEmptyNote">只需在这里填写今天的全天总量。</p>
+            </div>
+            <button class="inline-link-button" id="addTodayFoodDetailButton">需要明细时再添加食物</button>
           </article>
 
-          <article class="insight-card" id="insightCard">
-            <div class="insight-mark">i</div>
-            <p id="insightText">开始记录后，这里会显示你的目标进展。</p>
-          </article>
+          <details class="weight-card">
+            <summary>
+              <div>
+                <p class="eyebrow">体重预估</p>
+                <h3>体重与缺口预估</h3>
+              </div>
+              <span class="status-pill" id="weightStatus">点击录入体重</span>
+            </summary>
+            <div class="weight-card-body">
+              <div class="weight-entry-row">
+                <label class="weight-input-field">
+                  <span>今日实际体重</span>
+                  <div><input id="currentWeightInput" inputmode="decimal" type="number" min="1" max="1000" step="0.1" placeholder="例如 125" /><em>斤</em></div>
+                </label>
+                <button class="weight-save-button" id="saveCurrentWeightButton">保存今日体重</button>
+              </div>
+              <div class="weight-result-row">
+                <div><span>今日实测</span><strong id="currentWeightDisplay">—</strong></div>
+                <span class="weight-arrow">→</span>
+                <div><span>按缺口预估</span><strong id="projectedWeightDisplay">—</strong></div>
+              </div>
+              <p class="weight-note" id="weightEstimateNote">第一次录入的体重将作为固定基准，预估体重始终按累计热量缺口推算。</p>
+            </div>
+          </details>
         </section>
 
         <section class="page" data-page="records" aria-labelledby="recordsTitle">
@@ -138,7 +138,7 @@
               <p class="eyebrow">按自然日记录</p>
               <h2 id="recordsTitle">饮食记录</h2>
             </div>
-            <button class="small-action" id="recordAddButton">＋ 记大卡</button>
+            <button class="small-action" id="recordAddButton">编辑这一天</button>
           </div>
 
           <div class="date-switcher">
@@ -184,8 +184,8 @@
               <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="34" r="19"/><circle cx="32" cy="34" r="11"/><path d="M13 10v15M8 10v9c0 4 10 4 10 0v-9M51 10v15M51 10c7 4 7 13 0 15"/></svg>
             </div>
             <h3>这一天还没有记录</h3>
-            <p>可直接填写全天总大卡，也可以逐项添加食物。</p>
-            <button class="secondary-button" id="emptyAddButton">直接记录当天总大卡</button>
+            <p>可以填写全天总量，也可以添加食物明细。</p>
+            <button class="secondary-button" id="emptyAddButton">记录这一天</button>
           </div>
         </section>
 
@@ -240,8 +240,10 @@
             <summary>食物热量与计算说明</summary>
             <div>
               <p>常见食物库为日常参考值，同一种食物会因品牌、配方和烹饪方式不同而变化；包装食品请优先使用包装营养成分表。</p>
-              <p>千焦换算：千卡 = 千焦 ÷ 4.184。直接录入全天总大卡时，该数值会作为当天最终摄入，不再重复累计食物明细；取消全天总数后，自动恢复按食物明细合计。</p>
+              <p>包装食品支持大卡或千焦，也支持整包总量、每1份、每100克/100毫升。千焦换算：千卡 = 千焦 ÷ 4.184。</p>
+              <p>直接录入全天总大卡时，该数值会作为当天最终摄入，不再重复累计食物明细；取消全天总数后，自动恢复按食物明细合计。</p>
               <p>只有录入过全天大卡或食物的日期才会计入累计缺口；当天摄入超过 1,600 大卡时，当日缺口会显示为负数并降低累计值。</p>
+              <p>体重变化中的“−”表示按热量缺口预估下降；只有摄入超额造成热量盈余时才显示“+”。</p>
               <p>“3000 大卡 = 1斤”按本计划的自定义规则执行，仅作记录估算，不替代医学或营养建议。</p>
             </div>
           </details>
@@ -278,15 +280,15 @@
           <button class="close-button" id="closeFoodModal" aria-label="关闭">×</button>
         </div>
         <div class="segmented-control three-segments" role="tablist">
-          <button class="segment is-active" data-entry-mode="direct" role="tab">直接大卡</button>
+          <button class="segment is-active" data-entry-mode="direct" role="tab">全天总量</button>
           <button class="segment" data-entry-mode="common" role="tab">常见食物</button>
-          <button class="segment" data-entry-mode="package" role="tab">包装千焦</button>
+          <button class="segment" data-entry-mode="package" role="tab">包装换算</button>
         </div>
 
         <div class="entry-panel is-active" data-entry-panel="direct">
           <article class="direct-intake-intro">
-            <strong>不用逐项录入食物</strong>
-            <p>估算或查看其他软件后，把这一天吃下的总大卡直接填进来即可。</p>
+            <strong>填写这一天的全天总量</strong>
+            <p>适合补录或修改其他日期，不需要逐项添加食物。</p>
           </article>
           <label class="form-field direct-kcal-field">
             <span>这一天总共摄入</span>
@@ -322,23 +324,48 @@
             <span>食物名称</span>
             <input id="packageFoodName" type="text" maxlength="40" placeholder="例如：原味酸奶" />
           </label>
+          <fieldset class="package-unit-card">
+            <legend>包装营养表的热量单位</legend>
+            <label><input type="radio" name="packageEnergyUnit" value="kcal" checked /><span>大卡 / 千卡</span></label>
+            <label><input type="radio" name="packageEnergyUnit" value="kj" /><span>千焦</span></label>
+          </fieldset>
           <div class="package-mode-card">
-            <label><input type="radio" name="packageMode" value="total" checked /><span><strong>包装标的是本次总千焦</strong><small>直接输入本次吃下的总千焦</small></span></label>
-            <label><input type="radio" name="packageMode" value="per100" /><span><strong>包装标的是每 100克千焦</strong><small>再输入本次实际吃了多少克</small></span></label>
+            <label><input type="radio" name="packageMode" value="total" checked /><span><strong>本次 / 整包总热量</strong><small>包装已经给出这次吃下的总数</small></span></label>
+            <label><input type="radio" name="packageMode" value="perServing" /><span><strong>每 1份热量</strong><small>例如每份 120 大卡，本次吃 1.5份</small></span></label>
+            <label><input type="radio" name="packageMode" value="per100" /><span><strong>每 100克或100毫升</strong><small>再输入本次实际吃了多少</small></span></label>
           </div>
           <label class="form-field">
-            <span id="kilojouleFieldLabel">本次总千焦</span>
-            <div class="input-with-unit"><input id="kilojouleInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 1255" /><em>千焦</em></div>
+            <span id="packageEnergyFieldLabel">本次总热量</span>
+            <div class="input-with-unit"><input id="packageEnergyInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 320" /><em id="packageEnergyUnitLabel">大卡</em></div>
           </label>
-          <label class="form-field" id="packageWeightField" hidden>
+          <label class="form-field" id="packageServingField" hidden>
+            <span>本次吃了几份</span>
+            <div class="input-with-unit package-quantity-input">
+              <input id="packageServingCountInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 1.5" />
+              <select id="packageServingUnit" aria-label="份量单位">
+                <option value="份">份</option>
+                <option value="袋">袋</option>
+                <option value="瓶">瓶</option>
+                <option value="盒">盒</option>
+                <option value="根">根</option>
+              </select>
+            </div>
+          </label>
+          <label class="form-field" id="packageAmountField" hidden>
             <span>本次实际吃了</span>
-            <div class="input-with-unit"><input id="packageWeightInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 80" /><em>克</em></div>
+            <div class="input-with-unit package-quantity-input">
+              <input id="packageAmountInput" inputmode="decimal" type="number" min="0.1" step="0.1" placeholder="例如 80" />
+              <select id="packageAmountUnit" aria-label="重量或容量单位">
+                <option value="克">克</option>
+                <option value="毫升">毫升</option>
+              </select>
+            </div>
           </label>
           <div class="conversion-card">
-            <span>1 大卡 ≈ 4.184 千焦</span>
+            <span id="packageConversionNote">将按所填热量计入</span>
             <strong><span id="packageCaloriePreview">0</span> 大卡</strong>
           </div>
-          <button class="primary-button" id="confirmPackageFoodButton">换算并加入</button>
+          <button class="primary-button" id="confirmPackageFoodButton">计入这一天</button>
         </div>
       </section>
     </div>
