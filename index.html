@@ -48,7 +48,7 @@
             </div>
             <div class="hero-progress-copy">
               <span id="goalProgressText">已完成 0%</span>
-              <span id="estimatedWeightText">预计已减 0.0斤</span>
+              <span id="estimatedWeightText">缺口对应 0.0斤</span>
             </div>
           </article>
 
@@ -77,21 +77,21 @@
                 <p class="eyebrow">体重预估</p>
                 <h3>现在体重与预估体重</h3>
               </div>
-              <span class="status-pill" id="weightStatus">尚未录入</span>
+              <span class="status-pill" id="weightStatus">尚未设定基准</span>
             </div>
             <div class="weight-entry-row">
               <label class="weight-input-field">
-                <span>现在体重</span>
+                <span>今日实际体重</span>
                 <div><input id="currentWeightInput" inputmode="decimal" type="number" min="1" max="1000" step="0.1" placeholder="例如 125" /><em>斤</em></div>
               </label>
-              <button class="weight-save-button" id="saveCurrentWeightButton">保存体重</button>
+              <button class="weight-save-button" id="saveCurrentWeightButton">保存今日体重</button>
             </div>
             <div class="weight-result-row">
-              <div><span>当前录入</span><strong id="currentWeightDisplay">—</strong></div>
+              <div><span>今日实测</span><strong id="currentWeightDisplay">—</strong></div>
               <span class="weight-arrow">→</span>
               <div><span>按缺口预估</span><strong id="projectedWeightDisplay">—</strong></div>
             </div>
-            <p class="weight-note" id="weightEstimateNote">录入现在体重后，将从这一刻起按“每完成3000大卡缺口预计减1斤”推算。</p>
+            <p class="weight-note" id="weightEstimateNote">第一次录入的体重将作为固定基准，预估体重始终按累计热量缺口推算。</p>
           </article>
 
           <article class="today-card">

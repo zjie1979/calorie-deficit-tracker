@@ -137,13 +137,13 @@
     const stats = calculateOverallStats();
     const todayIntake = calculateDayIntake(todayKey());
     const todayDeficit = calculateDayDeficit(todayKey());
-    const completionForDisplay = Math.max(0, stats.completed);
+    const estimatedWeightChange = -stats.completed / CONFIG.kcalPerJin;
 
     dom.remainingDeficit.textContent = formatNumber(stats.remaining);
     dom.completedDeficit.textContent = formatSignedNumber(stats.completed);
     dom.goalProgressBar.style.width = `${stats.progress}%`;
     dom.goalProgressText.textContent = `已完成 ${formatDecimal(stats.progress, 1)}%`;
-    dom.estimatedWeightText.textContent = `预计已减 ${formatDecimal(completionForDisplay / CONFIG.kcalPerJin, 1)}斤`;
+    dom.estimatedWeightText.textContent = `缺口对应 ${formatSignedDecimal(estimatedWeightChange, 1)}斤`;
     dom.todayLabel.textContent = friendlyDate(todayKey());
     dom.todayIntake.textContent = formatNumber(todayIntake);
 
@@ -178,21 +178,23 @@
       if (document.activeElement !== dom.currentWeightInput) dom.currentWeightInput.value = "";
       dom.currentWeightDisplay.textContent = "—";
       dom.projectedWeightDisplay.textContent = "—";
-      dom.weightStatus.textContent = "尚未录入";
+      dom.weightStatus.textContent = "尚未设定基准";
       dom.weightStatus.classList.remove("is-positive");
-      dom.weightEstimateNote.textContent = "录入现在体重后，将从这一刻起按“每完成3000大卡缺口预计减1斤”推算。";
+      dom.weightEstimateNote.textContent = "第一次录入的体重将作为固定基准，预估体重始终按累计热量缺口推算。";
       return;
     }
 
-    const baseline = Number(profile.baselineCompletedDeficit) || 0;
-    const changeInDeficit = stats.completed - baseline;
-    const projectedWeight = currentWeight - changeInDeficit / CONFIG.kcalPerJin;
+    const storedStartingWeight = Number(profile.startingWeightJin);
+    const startingWeight = Number.isFinite(storedStartingWeight) && storedStartingWeight > 0
+      ? storedStartingWeight
+      : currentWeight;
+    const projectedWeight = startingWeight - stats.completed / CONFIG.kcalPerJin;
     dom.currentWeightInput.value = formatInputNumber(currentWeight);
     dom.currentWeightDisplay.textContent = `${formatDecimal(currentWeight, 1)}斤`;
     dom.projectedWeightDisplay.textContent = `${formatDecimal(projectedWeight, 1)}斤`;
-    dom.weightStatus.textContent = "已开始预估";
+    dom.weightStatus.textContent = "基准已固定";
     dom.weightStatus.classList.add("is-positive");
-    dom.weightEstimateNote.textContent = `从最近保存体重时起，热量缺口变化 ${formatSignedNumber(changeInDeficit)} 大卡，预估体重变化 ${formatSignedDecimal(-changeInDeficit / CONFIG.kcalPerJin, 1)}斤。`;
+    dom.weightEstimateNote.textContent = `固定基准 ${formatDecimal(startingWeight, 1)}斤，累计缺口 ${formatSignedNumber(stats.completed)} 大卡，对应预估 ${formatDecimal(projectedWeight, 1)}斤。今日实测体重不会改变预估基准。`;
   }
 
   function renderRecordsPage() {
@@ -411,17 +413,21 @@
 
   function saveCurrentWeight() {
     const weight = positiveNumber(dom.currentWeightInput.value);
-    if (!weight) return showToast("请输入现在体重");
+    if (!weight) return showToast("请输入今日实际体重");
     if (weight > 1000) return showToast("请输入1000斤以内的体重");
-    const stats = calculateOverallStats();
+    const existingStartingWeight = Number(appData.profile && appData.profile.startingWeightJin);
+    const hasStartingWeight = Number.isFinite(existingStartingWeight) && existingStartingWeight > 0;
+    const startingWeight = hasStartingWeight ? existingStartingWeight : weight;
     appData.profile = {
       currentWeightJin: round2(weight),
-      baselineCompletedDeficit: stats.completed,
+      startingWeightJin: round2(startingWeight),
       recordedAt: new Date().toISOString()
     };
     saveData();
     renderAll();
-    showToast(`已保存现在体重 ${formatDecimal(weight, 1)}斤`);
+    showToast(hasStartingWeight
+      ? `已更新今日体重；预估基准仍为 ${formatDecimal(startingWeight, 1)}斤`
+      : `已保存今日体重；预估基准为 ${formatDecimal(startingWeight, 1)}斤`);
   }
 
   function addEntry(dateKey, entry) {
@@ -649,10 +655,12 @@
     const profile = {};
     if (input.profile && typeof input.profile === "object") {
       const weight = Number(input.profile.currentWeightJin);
-      const baseline = Number(input.profile.baselineCompletedDeficit);
+      const storedStartingWeight = Number(input.profile.startingWeightJin);
       if (Number.isFinite(weight) && weight > 0 && weight <= 1000) {
         profile.currentWeightJin = round2(weight);
-        profile.baselineCompletedDeficit = Number.isFinite(baseline) ? round2(baseline) : 0;
+        profile.startingWeightJin = Number.isFinite(storedStartingWeight) && storedStartingWeight > 0 && storedStartingWeight <= 1000
+          ? round2(storedStartingWeight)
+          : round2(weight);
         profile.recordedAt = typeof input.profile.recordedAt === "string" ? input.profile.recordedAt : "";
       }
     }
