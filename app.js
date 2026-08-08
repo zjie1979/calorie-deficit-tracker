@@ -35,10 +35,10 @@
 
   function cacheDom() {
     [
-      "remainingDeficit", "completedDeficit", "completedJin", "paceDays", "goalProgressBar", "goalProgressText", "estimatedWeightText",
+      "remainingDeficit", "completedDeficit", "completedJin", "paceDays", "paceDaysUnit", "goalProgressBar", "goalProgressText", "estimatedWeightText",
       "todayLabel", "todayStatus", "todayIntake", "todayDeficit", "todayEmptyNote", "dailyContributionText", "insightText",
-      "currentWeightInput", "saveCurrentWeightButton", "currentWeightDisplay", "projectedWeightDisplay",
-      "weightStatus", "weightEstimateNote", "todayCalorieInput", "saveTodayCaloriesButton", "addTodayFoodDetailButton",
+      "currentWeightInput", "saveCurrentWeightButton", "currentWeightDisplay", "averageWeightDisplay", "projectedWeightDisplay",
+      "weightStatus", "weightEstimateNote", "weightHistoryList", "todayCalorieInput", "saveTodayCaloriesButton", "addTodayFoodDetailButton",
       "recordAddButton", "emptyAddButton", "recordDateInput",
       "recordDateFriendly", "previousDayButton", "nextDayButton", "selectedDayIntake", "selectedDayDeficit",
       "dailyTotalCard", "dailyTotalValue", "editDailyTotalButton", "clearDailyTotalButton", "entryCount",
@@ -149,12 +149,19 @@
     dom.remainingDeficit.textContent = formatNumber(stats.remaining);
     dom.completedDeficit.textContent = formatSignedNumber(stats.completed);
     dom.completedJin.textContent = formatSignedDecimal(weightChangeJin, 2);
-    dom.paceDays.textContent = stats.remaining === 0 ? "0" : stats.paceDays ? formatNumber(stats.paceDays) : "—";
+    if (stats.remaining === 0) {
+      dom.paceDays.textContent = "0";
+      dom.paceDaysUnit.textContent = "目标已完成";
+    } else if (stats.activeDays < 3) {
+      dom.paceDays.textContent = "积累中";
+      dom.paceDaysUnit.textContent = `${stats.activeDays}/3个记录日`;
+    } else {
+      dom.paceDays.textContent = stats.paceDays ? formatNumber(stats.paceDays) : "—";
+      dom.paceDaysUnit.textContent = stats.paceDays ? "预计天数" : "暂无正缺口";
+    }
     dom.goalProgressBar.style.width = `${stats.progress}%`;
     dom.goalProgressText.textContent = `已完成 ${formatDecimal(stats.progress, 1)}%`;
-    dom.estimatedWeightText.textContent = stats.completed !== 0
-      ? `预估体重 ${formatSignedDecimal(weightChangeJin, 2)}斤`
-      : "等待首次记录";
+    dom.estimatedWeightText.textContent = `还差 ${formatDecimal(stats.remaining / CONFIG.kcalPerJin, 2)}斤`;
     dom.todayLabel.textContent = friendlyDate(todayKey());
     dom.todayIntake.textContent = formatNumber(todayIntake);
     if (document.activeElement !== dom.todayCalorieInput) {
@@ -195,10 +202,21 @@
 
   function renderWeightEstimate(stats) {
     const profile = appData.profile || {};
-    const currentWeight = Number(profile.currentWeightJin);
-    if (!Number.isFinite(currentWeight) || currentWeight <= 0) {
+    const historyEntries = getWeightHistoryEntries();
+    const todayEntry = historyEntries.find((entry) => entry.dateKey === todayKey());
+    const latestEntry = historyEntries[historyEntries.length - 1];
+    const latestWeight = latestEntry ? Number(latestEntry.weightJin) : Number(profile.currentWeightJin);
+    const recentStart = addDays(todayKey(), -6);
+    const recentEntries = historyEntries.filter((entry) => entry.dateKey >= recentStart && entry.dateKey <= todayKey());
+    const averageWeight = recentEntries.length
+      ? recentEntries.reduce((sum, entry) => sum + Number(entry.weightJin), 0) / recentEntries.length
+      : null;
+
+    renderWeightHistory(historyEntries.slice(-7));
+    if (!Number.isFinite(latestWeight) || latestWeight <= 0) {
       if (document.activeElement !== dom.currentWeightInput) dom.currentWeightInput.value = "";
       dom.currentWeightDisplay.textContent = "—";
+      dom.averageWeightDisplay.textContent = "—";
       dom.projectedWeightDisplay.textContent = "—";
       dom.weightStatus.textContent = "点击录入体重";
       dom.weightStatus.classList.remove("is-positive");
@@ -209,14 +227,40 @@
     const storedStartingWeight = Number(profile.startingWeightJin);
     const startingWeight = Number.isFinite(storedStartingWeight) && storedStartingWeight > 0
       ? storedStartingWeight
-      : currentWeight;
+      : latestWeight;
     const projectedWeight = startingWeight - stats.completed / CONFIG.kcalPerJin;
-    dom.currentWeightInput.value = formatInputNumber(currentWeight);
-    dom.currentWeightDisplay.textContent = `${formatDecimal(currentWeight, 1)}斤`;
+    if (document.activeElement !== dom.currentWeightInput) {
+      dom.currentWeightInput.value = todayEntry ? formatInputNumber(todayEntry.weightJin) : "";
+    }
+    dom.currentWeightDisplay.textContent = todayEntry ? `${formatDecimal(todayEntry.weightJin, 1)}斤` : "未记录";
+    dom.averageWeightDisplay.textContent = averageWeight !== null ? `${formatDecimal(averageWeight, 1)}斤` : "—";
     dom.projectedWeightDisplay.textContent = `${formatDecimal(projectedWeight, 1)}斤`;
     dom.weightStatus.textContent = `预估 ${formatDecimal(projectedWeight, 1)}斤`;
     dom.weightStatus.classList.add("is-positive");
-    dom.weightEstimateNote.textContent = `固定基准 ${formatDecimal(startingWeight, 1)}斤，累计缺口 ${formatSignedNumber(stats.completed)} 大卡，对应预估 ${formatDecimal(projectedWeight, 1)}斤。今日实测体重不会改变预估基准。`;
+    dom.weightEstimateNote.textContent = `固定基准 ${formatDecimal(startingWeight, 1)}斤；近7天记录 ${recentEntries.length} 天，平均 ${averageWeight !== null ? `${formatDecimal(averageWeight, 1)}斤` : "—"}。今日实测体重不会改变预估基准。`;
+  }
+
+  function renderWeightHistory(entries) {
+    dom.weightHistoryList.replaceChildren();
+    if (!entries.length) {
+      const empty = document.createElement("em");
+      empty.textContent = "录入后按日期保存在这里";
+      dom.weightHistoryList.append(empty);
+      return;
+    }
+    entries
+      .slice()
+      .reverse()
+      .forEach((entry) => {
+        const item = document.createElement("div");
+        item.className = "weight-history-item";
+        const date = document.createElement("span");
+        date.textContent = shortDate(entry.dateKey);
+        const weight = document.createElement("strong");
+        weight.textContent = `${formatDecimal(entry.weightJin, 1)}斤`;
+        item.append(date, weight);
+        dom.weightHistoryList.append(item);
+      });
   }
 
   function renderRecordsPage() {
@@ -482,10 +526,16 @@
     const existingStartingWeight = Number(appData.profile && appData.profile.startingWeightJin);
     const hasStartingWeight = Number.isFinite(existingStartingWeight) && existingStartingWeight > 0;
     const startingWeight = hasStartingWeight ? existingStartingWeight : weight;
+    const recordedAt = new Date().toISOString();
+    if (!appData.weightHistory || typeof appData.weightHistory !== "object") appData.weightHistory = {};
+    appData.weightHistory[todayKey()] = {
+      weightJin: round2(weight),
+      recordedAt
+    };
     appData.profile = {
       currentWeightJin: round2(weight),
       startingWeightJin: round2(startingWeight),
-      recordedAt: new Date().toISOString()
+      recordedAt
     };
     saveData();
     renderAll();
@@ -600,7 +650,9 @@
     const recentAverage = recentDates.length
       ? recentDates.reduce((sum, dateKey) => sum + CONFIG.dailyAllowance - calculateDayIntake(dateKey), 0) / recentDates.length
       : 0;
-    const paceDays = recentAverage > 0 && remaining > 0 ? Math.ceil(remaining / recentAverage) : null;
+    const paceDays = activeDates.length >= 3 && recentAverage > 0 && remaining > 0
+      ? Math.ceil(remaining / recentAverage)
+      : null;
     return { completed, remaining, progress, activeDays: activeDates.length, recentAverage, paceDays };
   }
 
@@ -616,6 +668,7 @@
   function buildInsight(stats) {
     if (!stats.activeDays) return "每天保存一次总量，缺口会自动累计。";
     if (stats.completed >= CONFIG.targetDeficit) return "15,000 大卡目标已完成，继续记录可保留饮食轨迹。";
+    if (stats.activeDays < 3) return `已记录 ${stats.activeDays}/3 天，再记录 ${3 - stats.activeDays} 天后开始估算完成节奏。`;
     if (stats.recentAverage <= 0) return `已记录 ${stats.activeDays} 天，最近节奏还没有形成正缺口。`;
     return `近 ${Math.min(stats.activeDays, 7)} 个记录日平均 +${formatNumber(stats.recentAverage)} 大卡/天。`;
   }
@@ -733,19 +786,45 @@
       });
     }
 
-    const profile = {};
-    if (input.profile && typeof input.profile === "object") {
-      const weight = Number(input.profile.currentWeightJin);
-      const storedStartingWeight = Number(input.profile.startingWeightJin);
-      if (Number.isFinite(weight) && weight > 0 && weight <= 1000) {
-        profile.currentWeightJin = round2(weight);
-        profile.startingWeightJin = Number.isFinite(storedStartingWeight) && storedStartingWeight > 0 && storedStartingWeight <= 1000
-          ? round2(storedStartingWeight)
-          : round2(weight);
-        profile.recordedAt = typeof input.profile.recordedAt === "string" ? input.profile.recordedAt : "";
-      }
+    const weightHistory = {};
+    if (input.weightHistory && typeof input.weightHistory === "object") {
+      Object.entries(input.weightHistory).forEach(([dateKey, record]) => {
+        const weight = Number(record && typeof record === "object" ? record.weightJin : record);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !Number.isFinite(weight) || weight <= 0 || weight > 1000) return;
+        weightHistory[dateKey] = {
+          weightJin: round2(weight),
+          recordedAt: record && typeof record === "object" && typeof record.recordedAt === "string"
+            ? record.recordedAt
+            : ""
+        };
+      });
     }
-    return { version: 2, records, dailyTotals, profile };
+
+    const sourceProfile = input.profile && typeof input.profile === "object" ? input.profile : {};
+    const storedWeight = Number(sourceProfile.currentWeightJin);
+    const storedStartingWeight = Number(sourceProfile.startingWeightJin);
+    const storedRecordedAt = typeof sourceProfile.recordedAt === "string" ? sourceProfile.recordedAt : "";
+    if (!Object.keys(weightHistory).length && Number.isFinite(storedWeight) && storedWeight > 0 && storedWeight <= 1000) {
+      const migrationDate = dateKeyFromTimestamp(storedRecordedAt) || todayKey();
+      weightHistory[migrationDate] = {
+        weightJin: round2(storedWeight),
+        recordedAt: storedRecordedAt
+      };
+    }
+
+    const cleanWeightEntries = Object.entries(weightHistory).sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
+    const latestWeightEntry = cleanWeightEntries[cleanWeightEntries.length - 1];
+    const firstWeightEntry = cleanWeightEntries[0];
+    const profile = {};
+    if (latestWeightEntry) {
+      const latestRecord = latestWeightEntry[1];
+      profile.currentWeightJin = latestRecord.weightJin;
+      profile.startingWeightJin = Number.isFinite(storedStartingWeight) && storedStartingWeight > 0 && storedStartingWeight <= 1000
+        ? round2(storedStartingWeight)
+        : firstWeightEntry[1].weightJin;
+      profile.recordedAt = latestRecord.recordedAt || storedRecordedAt;
+    }
+    return { version: 3, records, dailyTotals, profile, weightHistory };
   }
 
   function loadData() {
@@ -759,7 +838,7 @@
   }
 
   function createEmptyData() {
-    return { version: 2, records: {}, dailyTotals: {}, profile: {} };
+    return { version: 3, records: {}, dailyTotals: {}, profile: {}, weightHistory: {} };
   }
 
   function saveData() {
@@ -768,6 +847,17 @@
 
   function getEntries(dateKey) {
     return Array.isArray(appData.records[dateKey]) ? appData.records[dateKey] : [];
+  }
+
+  function getWeightHistoryEntries() {
+    return Object.entries(appData.weightHistory || {})
+      .map(([dateKey, record]) => ({
+        dateKey,
+        weightJin: Number(record && typeof record === "object" ? record.weightJin : record),
+        recordedAt: record && typeof record === "object" ? record.recordedAt || "" : ""
+      }))
+      .filter((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry.dateKey) && Number.isFinite(entry.weightJin) && entry.weightJin > 0)
+      .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
   }
 
   function hasDailyTotal(dateKey) {
@@ -816,6 +906,20 @@
     const date = parseDate(dateKey);
     const weekdays = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
     return `${date.getMonth() + 1}月${date.getDate()}日 · ${weekdays[date.getDay()]}`;
+  }
+
+  function shortDate(dateKey) {
+    if (dateKey === todayKey()) return "今天";
+    if (dateKey === addDays(todayKey(), -1)) return "昨天";
+    const date = parseDate(dateKey);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  function dateKeyFromTimestamp(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return "";
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   }
 
   function todayKey() {

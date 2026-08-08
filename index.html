@@ -45,7 +45,7 @@
             </div>
             <div class="hero-progress-copy">
               <span id="goalProgressText">已完成 0%</span>
-              <span id="estimatedWeightText">等待首次记录</span>
+              <span id="estimatedWeightText">还差 5.00斤</span>
             </div>
             <div class="momentum-grid">
               <div>
@@ -61,7 +61,7 @@
               <div>
                 <span>当前节奏</span>
                 <strong id="paceDays">—</strong>
-                <small>预计天数</small>
+                <small id="paceDaysUnit">至少记录3天</small>
               </div>
             </div>
             <p class="hero-insight" id="insightText">保存当天摄入后，这里会显示完成节奏。</p>
@@ -124,8 +124,12 @@
               </div>
               <div class="weight-result-row">
                 <div><span>今日实测</span><strong id="currentWeightDisplay">—</strong></div>
-                <span class="weight-arrow">→</span>
+                <div><span>近7天平均</span><strong id="averageWeightDisplay">—</strong></div>
                 <div><span>按缺口预估</span><strong id="projectedWeightDisplay">—</strong></div>
+              </div>
+              <div class="weight-history-block">
+                <span>最近体重记录</span>
+                <div class="weight-history-list" id="weightHistoryList"><em>录入后按日期保存在这里</em></div>
               </div>
               <p class="weight-note" id="weightEstimateNote">第一次录入的体重将作为固定基准，预估体重始终按累计热量缺口推算。</p>
             </div>
@@ -244,6 +248,7 @@
               <p>直接录入全天总大卡时，该数值会作为当天最终摄入，不再重复累计食物明细；取消全天总数后，自动恢复按食物明细合计。</p>
               <p>只有录入过全天大卡或食物的日期才会计入累计缺口；当天摄入超过 1,600 大卡时，当日缺口会显示为负数并降低累计值。</p>
               <p>体重变化中的“−”表示按热量缺口预估下降；只有摄入超额造成热量盈余时才显示“+”。</p>
+              <p>体重按自然日保存，近7天平均只使用这7天内已录入的实测体重；至少记录3个饮食日后才开始估算剩余天数。</p>
               <p>“3000 大卡 = 1斤”按本计划的自定义规则执行，仅作记录估算，不替代医学或营养建议。</p>
             </div>
           </details>
